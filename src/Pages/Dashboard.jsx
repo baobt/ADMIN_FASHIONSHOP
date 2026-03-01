@@ -163,10 +163,10 @@ const Dashboard = ({ token }) => {
               <button
                 key={period.key}
                 onClick={() => setChartPeriod(period.key)}
-                className={`px-3 py-1 text-sm rounded-md transition ${
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                   chartPeriod === period.key
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {period.label}
@@ -175,105 +175,154 @@ const Dashboard = ({ token }) => {
           </div>
         </div>
 
-        {/* Simple Bar Chart */}
-        <div className='h-64 bg-gray-50 rounded-lg p-4'>
+        {/* Professional Bar Chart */}
+        <div className='h-80 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border'>
           {(() => {
-            console.log('Rendering chart with data:', chartData);
-            console.log('Data array:', chartData.data);
-            console.log('Labels array:', chartData.labels);
-
             if (chartData.data && chartData.data.length > 0) {
-              // Check if we have any non-zero values
               const hasRevenue = chartData.data.some(value => value > 0);
 
               if (!hasRevenue && !chartData.isSampleData) {
-                // No real revenue data, show sample data prompt
                 return (
-                  <div className='flex items-center justify-center h-full'>
-                    <div className='text-center'>
-                      <BarChart3 className='w-12 h-12 text-gray-400 mx-auto mb-2' />
-                      <p className='text-gray-500'>No revenue data for selected period</p>
-                      <p className='text-sm text-gray-400 mt-1'>
-                        Try changing the time period or create more orders
-                      </p>
+                  <div className='flex flex-col items-center justify-center h-full'>
+                    <div className='bg-white p-8 rounded-full shadow-lg mb-4'>
+                      <BarChart3 className='w-16 h-16 text-gray-400' />
                     </div>
+                    <h3 className='text-lg font-semibold text-gray-700 mb-2'>No Revenue Data</h3>
+                    <p className='text-gray-500 text-center max-w-md'>
+                      No revenue data available for the selected period.
+                      Try changing the time period or create more orders to see trends.
+                    </p>
                   </div>
                 );
               }
 
+              const maxValue = Math.max(...chartData.data);
+              const minValue = Math.min(...chartData.data.filter(v => v > 0)) || 0;
+
               return (
-                <div className='flex items-end justify-between h-full space-x-1'>
-                  {chartData.data.map((value, index) => {
-                    console.log(`Bar ${index}: value=${value}, label=${chartData.labels?.[index]}`);
-                    const maxValue = Math.max(...chartData.data);
-                    const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                <div className='flex flex-col h-full'>
+                  {/* Chart Area */}
+                  <div className='flex-1 flex items-end justify-center gap-1 pb-2'>
+                    {chartData.data.map((value, index) => {
+                      // Calculate height with better scaling
+                      let heightPercent = 0;
+                      if (maxValue > 0) {
+                        if (chartPeriod === 'daily') {
+                          // For daily, ensure minimum visibility and better scaling
+                          heightPercent = Math.max((value / maxValue) * 80, value > 0 ? 12 : 0);
+                        } else {
+                          // For weekly/monthly, use full range
+                          heightPercent = (value / maxValue) * 80;
+                        }
+                      }
 
-                    // Ensure bars with value > 0 are visible
-                    const displayHeight = value > 0 ? Math.max(heightPercent, 5) : (chartData.isSampleData ? Math.max(heightPercent, 2) : 0);
+                      const isHighest = value === maxValue && value > 0;
 
-                    return (
-                      <div key={index} className='flex-1 flex flex-col items-center relative'>
-                        {/* Bar */}
-                        <div
-                          className={`w-full rounded-t transition-all duration-300 hover:opacity-80 ${
-                            value > 0 ? 'bg-blue-500' : 'bg-gray-200'
-                          }`}
-                          style={{
-                            height: `${displayHeight}%`,
-                            minHeight: value > 0 ? '12px' : '0px'
-                          }}
-                          title={`${chartData.labels?.[index] || 'Unknown'}: ${currency}${value.toLocaleString()}`}
-                        ></div>
-
-                        {/* Value label on bar */}
-                        {value > 0 && displayHeight > 15 && (
-                          <div
-                            className='absolute text-white text-xs font-bold flex items-center justify-center w-full'
-                            style={{
-                              bottom: '2px',
-                              height: `${displayHeight - 4}%`
-                            }}
-                          >
-                            {value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` :
-                             value >= 1000 ? `${(value / 1000).toFixed(0)}K` :
-                             value.toLocaleString()}
+                      return (
+                        <div key={index} className='flex flex-col items-center group relative' style={{ width: '3.5%' }}>
+                          {/* Value label above bar - only on hover */}
+                          <div className='absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10'>
+                            <div className='bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap'>
+                              {currency}{value.toLocaleString()}
+                            </div>
                           </div>
-                        )}
 
-                        {/* Date label below bar */}
-                        <div className='text-xs text-gray-600 mt-1 text-center'>
-                          {chartPeriod === 'daily' ? (chartData.labels?.[index] ? new Date(chartData.labels[index]).getDate() : index) :
-                           chartPeriod === 'weekly' ? `W${index + 1}` :
-                           (chartData.labels?.[index] ? new Date(chartData.labels[index]).toLocaleDateString('en-US', { month: 'short' }) : index)}
+                          {/* Bar */}
+                          <div className='relative w-full flex flex-col items-center mb-2'>
+                            <div
+                              className={`w-full rounded-t-md transition-all duration-300 hover:brightness-110 ${
+                                value > 0
+                                  ? isHighest
+                                    ? 'bg-gradient-to-t from-blue-600 to-blue-400 shadow-md'
+                                    : 'bg-gradient-to-t from-blue-500 to-blue-300'
+                                  : 'bg-gray-200'
+                              }`}
+                              style={{
+                                height: `${Math.max(heightPercent, 0)}px`,
+                                minHeight: value > 0 ? '20px' : '0px'
+                              }}
+                            >
+                              {/* Value inside bar for large bars */}
+                              {value > 0 && heightPercent > 40 && (
+                                <div className='absolute inset-x-0 top-1 flex items-center justify-center px-1'>
+                                  <span className='text-white text-xs font-semibold drop-shadow-sm text-center leading-tight'>
+                                    {value >= 1000000 ? `${(value / 1000000).toFixed(1)}M` :
+                                     value >= 1000 ? `${(value / 1000).toFixed(0)}K` :
+                                     value >= 100 ? value.toLocaleString() : value}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Highlight for highest value */}
+                              {isHighest && value > 0 && (
+                                <div className='absolute -top-1 left-1/2 transform -translate-x-1/2'>
+                                  <div className='w-0 h-0 border-l-1.5 border-r-1.5 border-b-3 border-transparent border-b-yellow-400'></div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Date label below bar */}
+                          <div className='text-center leading-tight'>
+                            <div className='text-xs font-medium text-gray-700'>
+                              {chartPeriod === 'daily'
+                                ? (chartData.labels?.[index] ? new Date(chartData.labels[index]).getDate() : index + 1)
+                                : chartPeriod === 'weekly'
+                                ? `W${index + 1}`
+                                : (chartData.labels?.[index]
+                                  ? new Date(chartData.labels[index]).toLocaleDateString('en-US', { month: 'short' })
+                                  : `M${index + 1}`)
+                              }
+                            </div>
+                            {chartPeriod === 'daily' && chartData.data.length <= 31 && (
+                              <div className='text-xs text-gray-500 -mt-0.5'>
+                                {chartData.labels?.[index]
+                                  ? new Date(chartData.labels[index]).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 3)
+                                  : ''}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* Chart Footer */}
+                  <div className='flex items-center justify-between pt-4 border-t border-gray-200'>
+                    <div className='text-sm text-gray-600'>
+                      {chartPeriod === 'daily' && 'Daily revenue for the past 30 days'}
+                      {chartPeriod === 'weekly' && 'Weekly revenue for the past 12 weeks'}
+                      {chartPeriod === 'monthly' && 'Monthly revenue for the past 12 months'}
+                    </div>
+                    <div className='text-sm font-medium text-gray-700'>
+                      Total: {currency}{chartData.data.reduce((sum, val) => sum + val, 0).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
               );
             } else {
               return (
-                <div className='flex items-center justify-center h-full'>
-                  <div className='text-center'>
-                    <BarChart3 className='w-12 h-12 text-gray-400 mx-auto mb-2' />
-                    <p className='text-gray-500'>No revenue data available</p>
-                    <p className='text-sm text-gray-400 mt-1'>
-                      Create some orders to see the revenue trend
-                    </p>
-                    <p className='text-xs text-red-500 mt-2'>
-                      Debug: Check console for data logs
-                    </p>
+                <div className='flex flex-col items-center justify-center h-full'>
+                  <div className='bg-white p-8 rounded-full shadow-lg mb-4'>
+                    <BarChart3 className='w-16 h-16 text-gray-400' />
                   </div>
+                  <h3 className='text-lg font-semibold text-gray-700 mb-2'>No Data Available</h3>
+                  <p className='text-gray-500 text-center max-w-md'>
+                    No revenue data is available yet. Create some orders to start seeing trends.
+                  </p>
                 </div>
               );
             }
           })()}
 
           {chartData.isSampleData && (
-            <div className='mt-2 text-center'>
-              <span className='inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded'>
-                Sample Data - Create real orders to see actual revenue
-              </span>
+            <div className='mt-4 text-center'>
+              <div className='inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                <div className='w-2 h-2 bg-yellow-400 rounded-full animate-pulse'></div>
+                <span className='text-sm font-medium text-yellow-800'>
+                  Sample Data - Create real orders to see actual revenue trends
+                </span>
+              </div>
             </div>
           )}
         </div>
